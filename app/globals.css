@@ -40,3 +40,49 @@ a {
     color-scheme: dark;
   }
 }
+
+/* --- マトリクス表（components/MatrixTable.tsx / 要件 6.3） --- */
+
+/* スマホ幅では表ごと横スクロールさせる（body は overflow-x: hidden のため必須） */
+.matrix-wrap {
+  overflow-x: auto;
+}
+
+.matrix-table {
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.matrix-table th,
+.matrix-table td {
+  border: 1px solid #8884;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+/* 横スクロール中も名前列は左に固定する */
+.matrix-name-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--background);
+}
+
+.matrix-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.matrix-empty {
+  padding: 1rem 0;
+}
+
+/* スクリーンリーダーにだけ読ませる（操作列の見出し） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
