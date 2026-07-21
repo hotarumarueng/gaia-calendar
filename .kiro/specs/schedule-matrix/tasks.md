@@ -1,7 +1,7 @@
 # Implementation Plan — schedule-matrix
 
 - [ ] 1. Foundation: プロジェクト基盤の構築
-- [ ] 1.1 Next.js プロジェクトの初期化と共有定数・型の定義
+- [x] 1.1 Next.js プロジェクトの初期化と共有定数・型の定義
   - create-next-app（TypeScript / App Router）でプロジェクトを作成し、開発サーバーの起動を確認する
   - 固定4時間帯・曜日の定数と、共有型（時間帯ID・曜日・人単位エントリ）を定義する
   - 完了条件: `npm run dev` でトップページが表示され、定数・型が他モジュールから import できる
