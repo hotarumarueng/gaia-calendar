@@ -13,7 +13,7 @@
   - 完了条件: describe-table が ACTIVE かつ課金モード PROVISIONED を返し、.env.local に4つの環境変数が揃っている
   - _Requirements: 2.3_
 
-- [ ] 1.3 テスト基盤の導入
+- [x] 1.3 テスト基盤の導入
   - vitest を導入し、サンプルテストで実行環境を確認する
   - 完了条件: `npm test` がサンプルテストのパスを報告する
   - _Requirements: 2.1, 2.4, 1.4_
