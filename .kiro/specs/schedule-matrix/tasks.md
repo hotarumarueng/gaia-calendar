@@ -70,3 +70,8 @@
   - design.md の Integration/E2E チェックリスト7項目（永続化・上書き・空=削除・他ブラウザで操作非表示・コメント・削除確認・スマホ幅）を実施し、結果を記録する
   - 完了条件: 7項目すべてパス（不合格項目はゼロ）
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 6.3, 6.4_
+
+## Implementation Notes
+- Vitest 4（rolldown）は tsconfig "jsx": "preserve"（Next.js強制）と非互換のため、vitest.config.ts に `oxc: { jsx: { runtime: "automatic" } }` が必要（3.2で対応済み）
+- .tsx テストは vitest.config.ts のグローバル environment を変えず、ファイル先頭の `// @vitest-environment jsdom` で個別指定する方式に統一
+- updatedAt は ISO 8601 UTC（toISOString）で統一する前提。latestEditedAt は辞書順比較のためタイムゾーン表記の混在禁止（2.3実装時に厳守）
