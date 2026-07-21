@@ -26,7 +26,7 @@
   - _Requirements: 2.1, 2.4, 2.5, 1.4_
   - _Boundary: entryRules_
 
-- [ ] 2.2 (P) 本人名のブラウザ記憶ユーティリティ
+- [x] 2.2 (P) 本人名のブラウザ記憶ユーティリティ
   - localStorage への名前の保存・取得（キー `gaia-calendar:name`）を実装し、サーバーサイド実行時に安全に no-op となるようにする
   - 完了条件: 保存した名前がページ再読み込み後も取得できる
   - _Requirements: 3.1_
