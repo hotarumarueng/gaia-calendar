@@ -32,7 +32,7 @@
   - _Requirements: 3.1_
   - _Boundary: identity_
 
-- [ ] 2.3 DynamoDB アクセス層の実装
+- [x] 2.3 DynamoDB アクセス層の実装
   - 環境変数から DocumentClient を構成し、表データ取得（Scan して人単位に組み立て、未入力時間帯は空配列で補完）、人単位保存（Member の PutItem + 時間帯ごとの PutItem/DeleteItem）、人単位削除（Query で全 item を取得して削除）を実装する
   - 書き込み時に updatedAt を必ず設定する（DB 側に default がないため）
   - 完了条件: 実テーブルに対して保存→取得→削除の一連が動作し、削除後に当該参加者の item が残らない
@@ -75,3 +75,4 @@
 - Vitest 4（rolldown）は tsconfig "jsx": "preserve"（Next.js強制）と非互換のため、vitest.config.ts に `oxc: { jsx: { runtime: "automatic" } }` が必要（3.2で対応済み）
 - .tsx テストは vitest.config.ts のグローバル environment を変えず、ファイル先頭の `// @vitest-environment jsdom` で個別指定する方式に統一
 - updatedAt は ISO 8601 UTC（toISOString）で統一する前提。latestEditedAt は辞書順比較のためタイムゾーン表記の混在禁止（2.3実装時に厳守）
+- vitest は Next.js と異なり .env.local を自動ロードしない。統合テストがAWS認証情報を必要とする場合はvitest.config.tsで明示的なロード（Node標準のprocess.loadEnvFile等）が必要
