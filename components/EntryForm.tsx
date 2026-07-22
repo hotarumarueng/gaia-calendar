@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * 入力フォーム（要件 2.1, 2.5, 3.1, 4.1 / design.md「EntryForm」）
- *
- * - 名前・コメント・4時間帯×曜日チェックを入力し、保存で POST /api/entries を呼ぶ
- * - 200 応答: 名前を localStorage に記憶（identity.saveMyName）し、router.refresh() で表を最新化する
- * - 400 応答: レスポンスの error をフォーム内にインライン表示する（保存は行わない）
- * - ネットワーク/500 エラー: 再試行を促すメッセージを表示する
- * - `initialEntry` を渡すと、新規入力と同じフォームで編集入力として扱える
- */
-
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { saveMyName } from "@/lib/identity";
@@ -17,14 +7,11 @@ import { TIME_SLOTS, WEEKDAYS } from "@/lib/timeSlots";
 import type { MemberEntry, SlotId, Weekday } from "@/lib/types";
 
 interface EntryFormProps {
-  /** 編集対象の既存エントリ。省略時は新規入力として空欄から始まる */
   initialEntry?: MemberEntry;
 }
 
-/** ネットワーク断・500 応答時に表示する再試行案内（design.md Error Handling 準拠の文言） */
 const RETRY_MESSAGE = "保存に失敗しました。時間をおいて再試行してください";
 
-/** API の 400 応答（error コード）をフォーム向けの日本語メッセージに変換する */
 function errorMessageFor(error: string | undefined): string {
   switch (error) {
     case "EMPTY_NAME":
@@ -38,7 +25,6 @@ function errorMessageFor(error: string | undefined): string {
   }
 }
 
-/** レスポンス JSON から error コード（文字列）を安全に取り出す。取得できなければ undefined */
 async function readErrorCode(res: Response): Promise<string | undefined> {
   try {
     const data: unknown = await res.json();
@@ -47,7 +33,7 @@ async function readErrorCode(res: Response): Promise<string | undefined> {
       return typeof error === "string" ? error : undefined;
     }
   } catch {
-    // JSON として解釈できない応答は undefined 扱い（デフォルトの再試行メッセージにフォールバック）
+    // fallback
   }
   return undefined;
 }
@@ -117,40 +103,49 @@ export default function EntryForm({ initialEntry }: EntryFormProps) {
   }
 
   return (
-    <form aria-label="希望入力フォーム" onSubmit={handleSubmit}>
-      <label>
-        名前
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
-      <label>
-        コメント
-        <input
-          type="text"
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-        />
-      </label>
+    <form aria-label="希望入力フォーム" className="entry-form" onSubmit={handleSubmit}>
+      <div className="form-row">
+        <div className="form-field">
+          <label className="form-label" htmlFor="entry-name">名前</label>
+          <input
+            id="entry-name"
+            className="form-input"
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+        <div className="form-field">
+          <label className="form-label" htmlFor="entry-comment">コメント</label>
+          <input
+            id="entry-comment"
+            className="form-input"
+            type="text"
+            placeholder="例: 今週は火木が空いてます"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+          />
+        </div>
+      </div>
       {TIME_SLOTS.map((slot) => (
-        <fieldset key={slot.id}>
-          <legend>{slot.label}</legend>
-          {WEEKDAYS.map((weekday) => (
-            <label key={weekday}>
-              <input
-                type="checkbox"
-                checked={preferences[slot.id].includes(weekday)}
-                onChange={() => toggleWeekday(slot.id, weekday)}
-              />
-              {weekday}
-            </label>
-          ))}
+        <fieldset key={slot.id} className="slot-fieldset">
+          <legend className="slot-legend" data-slot={slot.id}>{slot.label}</legend>
+          <div className="weekday-group">
+            {WEEKDAYS.map((weekday) => (
+              <label key={weekday} className="weekday-chip" data-slot={slot.id}>
+                <input
+                  type="checkbox"
+                  checked={preferences[slot.id].includes(weekday)}
+                  onChange={() => toggleWeekday(slot.id, weekday)}
+                />
+                {weekday}
+              </label>
+            ))}
+          </div>
         </fieldset>
       ))}
-      {error && <p role="alert">{error}</p>}
-      <button type="submit" disabled={submitting}>
+      {error && <p role="alert" className="form-error">{error}</p>}
+      <button type="submit" className="btn btn-primary" disabled={submitting}>
         {submitting ? "保存中..." : "保存"}
       </button>
     </form>

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import EntryForm from "@/components/EntryForm";
 import MatrixTable from "@/components/MatrixTable";
+import ScheduleSummary from "@/components/ScheduleSummary";
 import type { MemberEntry } from "@/lib/types";
 
 interface MatrixPageClientProps {
@@ -62,21 +63,30 @@ export default function MatrixPageClient({ entries }: MatrixPageClientProps) {
 
   return (
     <>
-      <MatrixTable
-        entries={entries}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-      {deleteError && <p role="alert">{deleteError}</p>}
-      <EntryForm
-        key={editingEntry?.name ?? "__new__"}
-        initialEntry={editingEntry}
-      />
-      {editingEntry && (
-        <button type="button" onClick={handleCancelEdit}>
-          編集をキャンセル
-        </button>
-      )}
+      <ScheduleSummary entries={entries} />
+      <section className="section-card">
+        <p className="section-label">スケジュール一覧</p>
+        <MatrixTable
+          entries={entries}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </section>
+      {deleteError && <p role="alert" className="delete-error">{deleteError}</p>}
+      <section className="section-card">
+        <p className="section-label">
+          {editingEntry ? `${editingEntry.name} を編集中` : "希望を入力"}
+        </p>
+        <EntryForm
+          key={editingEntry?.name ?? "__new__"}
+          initialEntry={editingEntry}
+        />
+        {editingEntry && (
+          <button type="button" className="btn btn-ghost" style={{ marginTop: "0.75rem" }} onClick={handleCancelEdit}>
+            編集をキャンセル
+          </button>
+        )}
+      </section>
     </>
   );
 }
