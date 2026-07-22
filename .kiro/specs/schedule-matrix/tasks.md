@@ -7,7 +7,7 @@
   - 完了条件: `npm run dev` でトップページが表示され、定数・型が他モジュールから import できる
   - _Requirements: 6.1, 6.2_
 
-- [ ] 1.2 DynamoDB テーブルと専用 IAM ユーザーの作成（手順書化＋手動実施）
+- [x] 1.2 DynamoDB テーブルと専用 IAM ユーザーの作成（手順書化＋手動実施）
   - テーブル定義（PK=name / SK、プロビジョンド 25RCU・25WCU）、IAM 最小権限ポリシー（対象テーブル1つ・5アクション）、AWS CLI 作成コマンドを手順書としてまとめる
   - 手順書に従い Toriumi がテーブルと IAM ユーザーを作成し、認証情報は .env.local に直接記入する（チャットには貼らない）
   - 完了条件: describe-table が ACTIVE かつ課金モード PROVISIONED を返し、.env.local に4つの環境変数が揃っている
