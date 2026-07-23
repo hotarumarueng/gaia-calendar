@@ -490,6 +490,40 @@ a {
    Schedule Summary — 今週集まれそうな時間・曜日
    ────────────────────────────────────────────── */
 
+.summary-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.summary-header .section-label {
+  /* summary-header 内では下マージンを summary-header 側に集約する */
+  margin-bottom: 0;
+}
+
+.summary-week-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-week-tag {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--pink-500);
+}
+
 .summary-chips {
   display: flex;
   gap: 1rem;
@@ -597,6 +631,10 @@ a {
 
   .summary-weekday {
     font-size: 1.4rem;
+  }
+
+  .summary-week-label {
+    font-size: 0.95rem;
   }
 }
 

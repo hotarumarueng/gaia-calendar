@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import ScheduleSummary from "@/components/ScheduleSummary";
 import type { MemberEntry, SlotId, Weekday } from "@/lib/types";
@@ -25,6 +25,16 @@ function makeEntry(
 
 afterEach(cleanup);
 
+// 週ラベルの検証用に「今日」を JST 2026-12-09（水）に固定する
+// JST 2026-12-09 12:00 = UTC 2026-12-09 03:00
+beforeAll(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(Date.UTC(2026, 11, 9, 3, 0)));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
+
 describe("ScheduleSummary: 集まれそうな枠の表示", () => {
   it("メンバーが0人ならゾーン自体を表示しない", () => {
     const { container } = render(<ScheduleSummary entries={[]} />);
@@ -49,6 +59,18 @@ describe("ScheduleSummary: 集まれそうな枠の表示", () => {
     expect(screen.getByText("木")).toBeDefined();
     expect(screen.getByText("19:00-21:00")).toBeDefined();
     expect(screen.getByText("2/2人")).toBeDefined();
+  });
+
+  it("見出しの右隣に「今週分」ラベルと今週の日付範囲を表示する", () => {
+    const entries = [
+      makeEntry("A", { "19-21": ["木"] }),
+      makeEntry("B", { "19-21": ["木"] }),
+    ];
+    render(<ScheduleSummary entries={entries} />);
+
+    expect(screen.getByText("今週分")).toBeDefined();
+    // JST 2026-12-09（水）を含む週は 12/7（月）〜12/13（日）
+    expect(screen.getByText("12/7（月）〜12/13（日）")).toBeDefined();
   });
 
   it("全員一致の候補には「全員OK」バッジを表示する", () => {

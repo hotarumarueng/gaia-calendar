@@ -4,6 +4,7 @@
 import { computeTopCandidates } from "@/lib/summary";
 import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { MemberEntry, SlotId } from "@/lib/types";
+import { formatWeekRangeJp, getCurrentWeekRangeJst } from "@/lib/weekRange";
 
 interface ScheduleSummaryProps {
   entries: MemberEntry[];
@@ -17,9 +18,17 @@ export default function ScheduleSummary({ entries }: ScheduleSummaryProps) {
   const candidates = computeTopCandidates(entries);
   if (candidates.length === 0) return null;
 
+  const weekLabel = formatWeekRangeJp(getCurrentWeekRangeJst());
+
   return (
     <section className="section-card summary-card">
-      <p className="section-label">今週集まれそうな時間・曜日</p>
+      <div className="summary-header">
+        <p className="section-label">今週集まれそうな時間・曜日</p>
+        <span className="summary-week-label">
+          <span className="summary-week-tag">今週分</span>
+          <span className="summary-week-range">{weekLabel}</span>
+        </span>
+      </div>
       <div className="summary-chips">
         {candidates.map((candidate) => (
           <div
