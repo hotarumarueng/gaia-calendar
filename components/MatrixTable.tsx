@@ -11,11 +11,25 @@ interface MatrixTableProps {
   onDelete?: (name: string) => void;
 }
 
+// SSR（UTC）とブラウザ（JST）で表示が食い違わないよう、必ず JST で整形する
+const JST_LAST_EDITED_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 function formatLastEditedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${minutes}`;
+  const parts = JST_LAST_EDITED_FORMATTER.formatToParts(date);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  // "24:00" ケースを "0:00" に寄せる（hour12:false でも一部環境で 24 が出るため）
+  const hour = get("hour") === "24" ? "0" : get("hour");
+  return `${get("month")}/${get("day")} ${hour}:${get("minute")}`;
 }
 
 export default function MatrixTable({ entries, onEdit, onDelete }: MatrixTableProps) {

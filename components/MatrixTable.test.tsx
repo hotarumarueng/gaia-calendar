@@ -15,7 +15,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
     comment: "",
     preferences: { "19-21": [], "21-23": [], "8-10": [], "10-12": [] },
     // タイムゾーン指定なし = ローカル時刻として解釈され、表示テストが環境非依存になる
-    lastEditedAt: "2026-07-21T15:00:00",
+    lastEditedAt: "2026-07-21T15:00:00+09:00",
     ...overrides,
   };
 }
