@@ -525,9 +525,39 @@ a {
 }
 
 .summary-chips {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  flex-wrap: wrap;
+}
+
+/* 集まれそうな候補チップの上に、コメントを名前＋本文の二段レイアウトで並べる */
+.summary-comments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summary-comment {
+  padding: 0.6rem 0.9rem;
+  background: var(--gray-50);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.summary-comment-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+.summary-comment-body {
+  font-size: 0.95rem;
+  color: var(--gray-900);
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .summary-chip {
@@ -621,7 +651,12 @@ a {
   }
 
   .summary-chips {
+    grid-template-columns: 1fr;
     gap: 0.6rem;
+  }
+
+  .summary-comments {
+    grid-template-columns: 1fr;
   }
 
   .summary-chip {

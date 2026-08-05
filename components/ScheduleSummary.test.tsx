@@ -8,10 +8,11 @@ import type { MemberEntry, SlotId, Weekday } from "@/lib/types";
 function makeEntry(
   name: string,
   preferences: Partial<Record<SlotId, Weekday[]>> = {},
+  comment = "",
 ): MemberEntry {
   return {
     name,
-    comment: "",
+    comment,
     preferences: {
       "19-21": [],
       "21-23": [],
@@ -71,6 +72,31 @@ describe("ScheduleSummary: 集まれそうな枠の表示", () => {
     expect(screen.getByText("今週分")).toBeDefined();
     // JST 2026-12-09（水）を含む週は 12/7（月）〜12/13（日）
     expect(screen.getByText("12/7（月）〜12/13（日）")).toBeDefined();
+  });
+
+  it("コメントを書いた人がいれば、名前とコメントを二段レイアウトで表示する", () => {
+    const entries = [
+      makeEntry("A", { "19-21": ["木"] }, "今週は忙しめ"),
+      makeEntry("B", { "19-21": ["木"] }),
+      makeEntry("C", { "19-21": ["木"] }, "状況次第でおじゃまします！"),
+    ];
+    render(<ScheduleSummary entries={entries} />);
+
+    expect(screen.getByText("A")).toBeDefined();
+    expect(screen.getByText("今週は忙しめ")).toBeDefined();
+    expect(screen.getByText("C")).toBeDefined();
+    expect(screen.getByText("状況次第でおじゃまします！")).toBeDefined();
+    // コメント無しの B は名前として出ないこと（チップの曜日「木」とは別枠）
+    expect(screen.queryByText("B")).toBeNull();
+  });
+
+  it("誰もコメントを書いていなければコメント欄自体を出さない", () => {
+    const entries = [
+      makeEntry("A", { "19-21": ["木"] }),
+      makeEntry("B", { "19-21": ["木"] }),
+    ];
+    const { container } = render(<ScheduleSummary entries={entries} />);
+    expect(container.querySelector(".summary-comments")).toBeNull();
   });
 
   it("全員一致の候補には「全員OK」バッジを表示する", () => {

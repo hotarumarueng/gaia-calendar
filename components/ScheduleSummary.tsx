@@ -15,10 +15,12 @@ function slotLabel(slotId: SlotId): string {
 }
 
 export default function ScheduleSummary({ entries }: ScheduleSummaryProps) {
-  const candidates = computeTopCandidates(entries);
+  // 上位6件を横3×2段で表示する
+  const candidates = computeTopCandidates(entries, 6);
   if (candidates.length === 0) return null;
 
   const weekLabel = formatWeekRangeJp(getCurrentWeekRangeJst());
+  const commented = entries.filter((entry) => entry.comment.trim().length > 0);
 
   return (
     <section className="section-card summary-card">
@@ -29,6 +31,16 @@ export default function ScheduleSummary({ entries }: ScheduleSummaryProps) {
           <span className="summary-week-range">{weekLabel}</span>
         </span>
       </div>
+      {commented.length > 0 && (
+        <div className="summary-comments">
+          {commented.map((entry) => (
+            <div key={entry.name} className="summary-comment">
+              <p className="summary-comment-name">{entry.name}</p>
+              <p className="summary-comment-body">{entry.comment}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="summary-chips">
         {candidates.map((candidate) => (
           <div
