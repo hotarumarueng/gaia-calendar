@@ -60,7 +60,7 @@ describe("POST /api/entries（2.1, 2.4, 2.5, 4.1, 4.2）", () => {
       postRequest({
         name: "  とりうみ  ",
         comment: "テスト中",
-        preferences: buildPreferences({ "19-21": ["火"] }),
+        preferences: buildPreferences({ "21-23": ["火"] }),
       }),
     );
 
@@ -69,7 +69,7 @@ describe("POST /api/entries（2.1, 2.4, 2.5, 4.1, 4.2）", () => {
     expect(upsertEntry).toHaveBeenCalledWith({
       name: "とりうみ",
       comment: "テスト中",
-      preferences: buildPreferences({ "19-21": ["火"] }),
+      preferences: buildPreferences({ "21-23": ["火"] }),
     });
   });
 
@@ -128,8 +128,25 @@ describe("POST /api/entries（2.1, 2.4, 2.5, 4.1, 4.2）", () => {
         name: "とりうみ",
         comment: "",
         preferences: buildPreferences({
-          "19-21": ["月曜日" as unknown as Weekday],
+          "21-23": ["月曜日" as unknown as Weekday],
         }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "INVALID_PREFERENCES",
+    });
+    expect(upsertEntry).not.toHaveBeenCalled();
+  });
+
+  it("その時間帯で選べない曜日は400を返す（10-12 は土日のみ）", async () => {
+    const response = await POST(
+      postRequest({
+        name: "とりうみ",
+        comment: "",
+        preferences: buildPreferences({ "10-12": ["火"] }),
       }),
     );
 

@@ -3,7 +3,7 @@ import { latestEditedAt, planSlotWrites, validateName } from "@/lib/entryRules";
 import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { SlotId, Weekday } from "@/lib/types";
 
-/** 全 SlotId（固定4枠）を TIME_SLOTS から導出する（再定義禁止のため） */
+/** 全 SlotId（固定2枠）を TIME_SLOTS から導出する（再定義禁止のため） */
 const ALL_SLOT_IDS: SlotId[] = TIME_SLOTS.map((slot) => slot.id);
 
 /** テスト用の preferences を組み立てるヘルパー */
@@ -11,9 +11,7 @@ function buildPreferences(
   overrides: Partial<Record<SlotId, Weekday[]>> = {},
 ): Record<SlotId, Weekday[]> {
   const base: Record<SlotId, Weekday[]> = {
-    "19-21": [],
     "21-23": [],
-    "8-10": [],
     "10-12": [],
   };
   return { ...base, ...overrides };
@@ -44,35 +42,33 @@ describe("validateName（2.1, 2.5）", () => {
 describe("planSlotWrites（2.4）", () => {
   it("空配列の時間帯は deletes に、非空の時間帯は upserts に入る", () => {
     const preferences = buildPreferences({
-      "19-21": ["月", "水"],
-      "8-10": ["土"],
+      "21-23": ["月", "水"],
     });
 
     const result = planSlotWrites(preferences);
 
     expect(result.upserts).toEqual([
-      { slotId: "19-21", weekdays: ["月", "水"] },
-      { slotId: "8-10", weekdays: ["土"] },
+      { slotId: "21-23", weekdays: ["月", "水"] },
     ]);
-    expect(result.deletes).toEqual(["21-23", "10-12"]);
+    expect(result.deletes).toEqual(["10-12"]);
   });
 
   it("不変条件: 全 SlotId が漏れ・重複なくちょうど1回どちらかに割り当てられる", () => {
     const preferences = buildPreferences({
       "21-23": ["火"],
-      "10-12": ["金", "日"],
+      "10-12": ["土", "日"],
     });
 
     const { upserts, deletes } = planSlotWrites(preferences);
     const assigned = [...upserts.map((u) => u.slotId), ...deletes];
 
-    // 漏れなし・重複なし（件数が4 かつ 集合として全 SlotId と一致）
+    // 漏れなし・重複なし（件数が枠数と一致 かつ 集合として全 SlotId と一致）
     expect(assigned).toHaveLength(ALL_SLOT_IDS.length);
     expect(new Set(assigned)).toEqual(new Set(ALL_SLOT_IDS));
   });
 
   it("不変条件: weekdays が空配列 ⇔ deletes に入る", () => {
-    const preferences = buildPreferences({ "19-21": ["月"] });
+    const preferences = buildPreferences({ "21-23": ["月"] });
 
     const { upserts, deletes } = planSlotWrites(preferences);
 
@@ -95,10 +91,8 @@ describe("planSlotWrites（2.4）", () => {
 
   it("境界: 全時間帯が非空なら全て upserts、deletes は空", () => {
     const preferences = buildPreferences({
-      "19-21": ["月"],
       "21-23": ["火"],
-      "8-10": ["水"],
-      "10-12": ["木"],
+      "10-12": ["土"],
     });
 
     const result = planSlotWrites(preferences);

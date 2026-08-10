@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * マトリクスページのクライアント側ラッパー（タスク 4.1）
+ * ページのクライアント側ラッパー
  *
  * Server Component（page.tsx）が取得した表データを受け取り、
- * MatrixTable・EntryForm を1ページに配置して編集・削除の状態を管理する。
+ * 左＝自分の回答パネル（EntryForm＋RosterList）、右＝集計（ScheduleSummary）
+ * の2カラムに配置して編集・削除の状態を管理する。
  */
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import AvailabilityGrid from "@/components/AvailabilityGrid";
 import EntryForm from "@/components/EntryForm";
-import MatrixTable from "@/components/MatrixTable";
+import RosterList from "@/components/RosterList";
 import ScheduleSummary from "@/components/ScheduleSummary";
 import type { MemberEntry } from "@/lib/types";
 
@@ -62,31 +64,44 @@ export default function MatrixPageClient({ entries }: MatrixPageClientProps) {
   }
 
   return (
-    <>
-      <ScheduleSummary entries={entries} />
-      <section className="section-card">
-        <p className="section-label">スケジュール一覧</p>
-        <MatrixTable
-          entries={entries}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      </section>
-      {deleteError && <p role="alert" className="delete-error">{deleteError}</p>}
-      <section className="section-card">
-        <p className="section-label">
-          {editingEntry ? `${editingEntry.name} を編集中` : "希望を入力"}
-        </p>
+    // 1024px 未満では CSS 側で1カラムに戻り、集計が先頭に来る
+    <div className="board">
+      <section className="board-input panel">
+        <div className="panel-head">
+          <h2 className="panel-title">
+            {editingEntry ? `${editingEntry.name} の回答を修正` : "いつ集まりまっか〜"}
+          </h2>
+          <p className="panel-sub">空いてる曜日をえらんで送信してね</p>
+        </div>
+
         <EntryForm
           key={editingEntry?.name ?? "__new__"}
           initialEntry={editingEntry}
         />
         {editingEntry && (
-          <button type="button" className="btn btn-ghost" style={{ marginTop: "0.75rem" }} onClick={handleCancelEdit}>
+          <button type="button" className="btn btn-ghost btn-block" onClick={handleCancelEdit}>
             編集をキャンセル
           </button>
         )}
+
+        <hr className="panel-divider" />
+
+        <div className="roster-head">
+          <span className="roster-head-title">みんなの回答状況</span>
+          <span className="roster-head-meta">最終編集</span>
+        </div>
+        {deleteError && <p role="alert" className="delete-error">{deleteError}</p>}
+        <RosterList
+          entries={entries}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </section>
-    </>
+
+      <div className="board-main">
+        <ScheduleSummary entries={entries} />
+        <AvailabilityGrid entries={entries} />
+      </div>
+    </div>
   );
 }

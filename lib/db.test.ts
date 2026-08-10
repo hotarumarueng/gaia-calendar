@@ -7,7 +7,7 @@ import { deleteEntry, getMatrix, upsertEntry } from "@/lib/db";
 import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { SlotId, Weekday } from "@/lib/types";
 
-/** 全 SlotId（固定4枠）を TIME_SLOTS から導出する（再定義禁止のため） */
+/** 全 SlotId（固定2枠）を TIME_SLOTS から導出する（再定義禁止のため） */
 const ALL_SLOT_IDS: SlotId[] = TIME_SLOTS.map((slot) => slot.id);
 
 /** テスト用の preferences を組み立てるヘルパー（未指定の枠は空配列で補完） */
@@ -44,8 +44,8 @@ describe("db.ts（実 DynamoDB テーブルに対する統合テスト）", () =
       name: TEST_NAME,
       comment: "テスト中です",
       preferences: buildPreferences({
-        "19-21": ["月", "水"],
-        "8-10": ["土"],
+        "21-23": ["月", "水"],
+        "10-12": ["土"],
       }),
     });
 
@@ -56,8 +56,8 @@ describe("db.ts（実 DynamoDB テーブルに対する統合テスト）", () =
     expect(entry?.comment).toBe("テスト中です");
     expect(entry?.preferences).toEqual(
       buildPreferences({
-        "19-21": ["月", "水"],
-        "8-10": ["土"],
+        "21-23": ["月", "水"],
+        "10-12": ["土"],
       }),
     );
     expect(entry?.lastEditedAt).toEqual(expect.any(String));
@@ -69,7 +69,7 @@ describe("db.ts（実 DynamoDB テーブルに対する統合テスト）", () =
       name: TEST_NAME,
       comment: "更新後のコメント",
       preferences: buildPreferences({
-        "19-21": [], // 前回は非空だった枠を空にする → 削除されて空欄に戻るはず
+        "10-12": [], // 前回は非空だった枠を空にする → 削除されて空欄に戻るはず
         "21-23": ["火"],
       }),
     });

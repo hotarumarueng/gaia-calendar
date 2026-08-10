@@ -7,9 +7,7 @@ function buildPreferences(
   overrides: Partial<Record<SlotId, Weekday[]>> = {},
 ): Record<SlotId, Weekday[]> {
   const base: Record<SlotId, Weekday[]> = {
-    "19-21": [],
     "21-23": [],
-    "8-10": [],
     "10-12": [],
   };
   return { ...base, ...overrides };
@@ -39,23 +37,23 @@ describe("computeTopCandidates: 集まりやすい枠の集計", () => {
 
   it("1人の希望はすべて count=1 の候補になる", () => {
     const result = computeTopCandidates([
-      makeEntry("A", { "19-21": ["火", "木"] }),
+      makeEntry("A", { "21-23": ["火", "木"] }),
     ]);
     expect(result).toEqual([
-      { slotId: "19-21", weekday: "火", count: 1, total: 1 },
-      { slotId: "19-21", weekday: "木", count: 1, total: 1 },
+      { slotId: "21-23", weekday: "火", count: 1, total: 1 },
+      { slotId: "21-23", weekday: "木", count: 1, total: 1 },
     ]);
   });
 
   it("複数人が重なる枠が count 降順で先頭に来る", () => {
     const entries = [
-      makeEntry("A", { "19-21": ["火", "木"], "8-10": ["月"] }),
-      makeEntry("B", { "19-21": ["木"], "10-12": ["土"] }),
-      makeEntry("C", { "19-21": ["木"] }),
+      makeEntry("A", { "21-23": ["火", "木"], "10-12": ["土"] }),
+      makeEntry("B", { "21-23": ["木"], "10-12": ["日"] }),
+      makeEntry("C", { "21-23": ["木"] }),
     ];
     const result = computeTopCandidates(entries);
     expect(result[0]).toEqual({
-      slotId: "19-21",
+      slotId: "21-23",
       weekday: "木",
       count: 3,
       total: 3,
@@ -64,25 +62,38 @@ describe("computeTopCandidates: 集まりやすい枠の集計", () => {
 
   it("同数タイは TIME_SLOTS 順 → WEEKDAYS 順で安定する", () => {
     const entries = [
-      makeEntry("A", { "10-12": ["日"], "21-23": ["土"], "19-21": ["水"] }),
+      makeEntry("A", { "10-12": ["日"], "21-23": ["水", "土"] }),
     ];
     const result = computeTopCandidates(entries);
-    // すべて count=1 のタイ → スロット表示順（19-21, 21-23, 10-12）
-    expect(result.map((c) => c.slotId)).toEqual(["19-21", "21-23", "10-12"]);
+    // すべて count=1 のタイ → スロット表示順（21-23 → 10-12）、枠内は WEEKDAYS 順
+    expect(result.map((c) => [c.slotId, c.weekday])).toEqual([
+      ["21-23", "水"],
+      ["21-23", "土"],
+      ["10-12", "日"],
+    ]);
   });
 
   it("limit 件（デフォルト3）に切り詰める", () => {
     const entries = [
-      makeEntry("A", { "19-21": ["月", "火", "水", "木", "金"] }),
+      makeEntry("A", { "21-23": ["月", "火", "水", "木", "金"] }),
     ];
     expect(computeTopCandidates(entries)).toHaveLength(3);
     expect(computeTopCandidates(entries, 5)).toHaveLength(5);
   });
 
+  it("その時間帯で選べない曜日は候補にならない（10-12 は土日のみ）", () => {
+    // 平日を持つ壊れたデータが来ても 10-12 の平日候補は作らない
+    const entries = [makeEntry("A", { "10-12": ["火", "土"] })];
+    const result = computeTopCandidates(entries);
+    expect(result).toEqual([
+      { slotId: "10-12", weekday: "土", count: 1, total: 1 },
+    ]);
+  });
+
   it("全員一致の枠は count === total になる", () => {
     const entries = [
-      makeEntry("A", { "8-10": ["月"] }),
-      makeEntry("B", { "8-10": ["月"] }),
+      makeEntry("A", { "21-23": ["月"] }),
+      makeEntry("B", { "21-23": ["月"] }),
     ];
     const [top] = computeTopCandidates(entries);
     expect(top.count).toBe(top.total);

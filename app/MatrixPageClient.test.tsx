@@ -34,7 +34,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
   return {
     name: "とりうみ",
     comment: "テストコメント",
-    preferences: { "19-21": ["火", "木"], "21-23": [], "8-10": [], "10-12": [] },
+    preferences: { "21-23": ["火", "木"], "10-12": [] },
     lastEditedAt: "2026-07-21T15:00:00",
     ...overrides,
   };
@@ -48,12 +48,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("MatrixPageClient: 表と入力フォームの統合（1.1, 6.1, 6.2）", () => {
-  it("entries をマトリクス表に表示する", () => {
-    render(<MatrixPageClient entries={[makeEntry()]} />);
+describe("MatrixPageClient: 回答状況と入力フォームの統合（1.1, 6.1, 6.2）", () => {
+  it("entries を回答状況リストと候補カードに表示する", () => {
+    const { container } = render(<MatrixPageClient entries={[makeEntry()]} />);
 
-    expect(screen.getByRole("rowheader", { name: "とりうみ" })).toBeDefined();
-    expect(screen.getByText("火・木")).toBeDefined();
+    // 名前は「みんなの回答状況」に出る
+    const roster = container.querySelector(".roster") as HTMLElement;
+    expect(within(roster).getByText("とりうみ")).toBeDefined();
+
+    // 希望曜日は候補カードとして出る（19-21 に 火・木 を入れてある）
+    expect(screen.getByText("今週集まれそうな時間・曜日")).toBeDefined();
+    const chips = container.querySelector(".summary-chips") as HTMLElement;
+    expect(within(chips).getByText("火")).toBeDefined();
+    expect(within(chips).getByText("木")).toBeDefined();
   });
 
   it("入力フォームを表示する", () => {
@@ -80,7 +87,7 @@ describe("MatrixPageClient: 編集フロー", () => {
     const entry = makeEntry({
       name: "とりうみ",
       comment: "元のコメント",
-      preferences: { "19-21": ["月"], "21-23": [], "8-10": [], "10-12": [] },
+      preferences: { "21-23": ["月"], "10-12": [] },
     });
     render(<MatrixPageClient entries={[entry]} />);
 
@@ -89,10 +96,11 @@ describe("MatrixPageClient: 編集フロー", () => {
     expect((screen.getByLabelText("名前") as HTMLInputElement).value).toBe(
       "とりうみ",
     );
-    expect((screen.getByLabelText("コメント") as HTMLInputElement).value).toBe(
-      "元のコメント",
-    );
-    const slotGroup = screen.getByRole("group", { name: "19:00-21:00" });
+    expect(
+      (screen.getByLabelText("ひとことコメント（任意）") as HTMLTextAreaElement)
+        .value,
+    ).toBe("元のコメント");
+    const slotGroup = screen.getByRole("group", { name: "21:00-23:00" });
     expect(
       (
         within(slotGroup).getByRole("checkbox", {

@@ -1,6 +1,6 @@
 // 「今週集まれそうな時間/曜日」サマリーの集計ロジック（純関数）
 
-import { TIME_SLOTS, WEEKDAYS } from "./timeSlots";
+import { TIME_SLOTS } from "./timeSlots";
 import type { MemberEntry, SlotId, Weekday } from "./types";
 
 export interface SlotCandidate {
@@ -25,7 +25,8 @@ export function computeTopCandidates(
 
   const candidates: SlotCandidate[] = [];
   for (const slot of TIME_SLOTS) {
-    for (const weekday of WEEKDAYS) {
+    // その時間帯で選べる曜日だけを候補にする（例: 10-12 は土日のみ）
+    for (const weekday of slot.weekdays) {
       const count = entries.filter((entry) =>
         entry.preferences[slot.id].includes(weekday),
       ).length;

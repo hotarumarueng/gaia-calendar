@@ -12,7 +12,7 @@ import {
   type ScanCommandOutput,
 } from "@aws-sdk/lib-dynamodb";
 import { latestEditedAt, planSlotWrites } from "./entryRules";
-import { TIME_SLOTS, WEEKDAYS } from "./timeSlots";
+import { TIME_SLOTS } from "./timeSlots";
 import type { MemberEntry, SlotId, Weekday } from "./types";
 
 /** Member item の SK 固定値（tech.md / infra/dynamodb-setup.md 準拠） */
@@ -30,10 +30,13 @@ function isSlotId(value: string): value is SlotId {
   return SLOT_ID_SET.has(value);
 }
 
-const WEEKDAY_SET: ReadonlySet<string> = new Set(WEEKDAYS);
-function isWeekday(value: unknown): value is Weekday {
-  return typeof value === "string" && WEEKDAY_SET.has(value);
-}
+/**
+ * 時間帯ごとに選べる曜日が違う（例: 10-12 は土日のみ）。
+ * 廃止した時間帯の item や、範囲外の曜日を含む古い item は読み捨てる
+ * ＝ 移行スクリプトなしで表示を新しい定義に揃える
+ */
+const ALLOWED_WEEKDAYS_BY_SLOT: ReadonlyMap<SlotId, ReadonlySet<string>> =
+  new Map(TIME_SLOTS.map((slot) => [slot.id, new Set<string>(slot.weekdays)]));
 
 /** upsertEntry に渡す検証済みデータ（MemberEntry から表示用の lastEditedAt を除いたもの） */
 export type ValidatedEntry = {
@@ -146,7 +149,10 @@ export async function getMatrix(): Promise<MemberEntry[]> {
       } else if (item.sk.startsWith(SLOT_SK_PREFIX)) {
         const slotId = item.sk.slice(SLOT_SK_PREFIX.length);
         if (isSlotId(slotId)) {
-          preferences[slotId] = (item.weekdays ?? []).filter(isWeekday);
+          const allowed = ALLOWED_WEEKDAYS_BY_SLOT.get(slotId);
+          preferences[slotId] = (item.weekdays ?? []).filter(
+            (weekday): weekday is Weekday => allowed?.has(weekday) === true,
+          );
         }
       }
     }

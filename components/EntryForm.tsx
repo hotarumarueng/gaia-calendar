@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { saveMyName } from "@/lib/identity";
-import { TIME_SLOTS, WEEKDAYS } from "@/lib/timeSlots";
+import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { MemberEntry, SlotId, Weekday } from "@/lib/types";
 
 interface EntryFormProps {
@@ -104,34 +104,29 @@ export default function EntryForm({ initialEntry }: EntryFormProps) {
 
   return (
     <form aria-label="希望入力フォーム" className="entry-form" onSubmit={handleSubmit}>
-      <div className="form-row">
-        <div className="form-field">
-          <label className="form-label" htmlFor="entry-name">名前</label>
-          <input
-            id="entry-name"
-            className="form-input"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-        <div className="form-field">
-          <label className="form-label" htmlFor="entry-comment">コメント</label>
-          <input
-            id="entry-comment"
-            className="form-input"
-            type="text"
-            placeholder="例: 今週は火木が空いてます"
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-          />
-        </div>
+      <div className="form-field">
+        <label className="form-label" htmlFor="entry-name">名前</label>
+        <input
+          id="entry-name"
+          className="form-input"
+          type="text"
+          placeholder="ニックネームでOK"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
       </div>
+
       {TIME_SLOTS.map((slot) => (
-        <fieldset key={slot.id} className="slot-fieldset">
-          <legend className="slot-legend" data-slot={slot.id}>{slot.label}</legend>
+        // legend は視覚的に隠し、同じ文言を左端のピルとして描画する。
+        // legend を display:flex の行に混ぜるとブラウザ間で配置が崩れるため
+        <fieldset key={slot.id} className="slot-row">
+          <legend className="visually-hidden">{slot.label}</legend>
+          <span className="slot-row-label" data-slot={slot.id} aria-hidden="true">
+            {slot.label}
+          </span>
+          {/* 選べる曜日は時間帯ごとに違う（例: 10-12 は土日のみ） */}
           <div className="weekday-group">
-            {WEEKDAYS.map((weekday) => (
+            {slot.weekdays.map((weekday) => (
               <label key={weekday} className="weekday-chip" data-slot={slot.id}>
                 <input
                   type="checkbox"
@@ -144,9 +139,24 @@ export default function EntryForm({ initialEntry }: EntryFormProps) {
           </div>
         </fieldset>
       ))}
+
+      <div className="form-field">
+        <label className="form-label" htmlFor="entry-comment">
+          ひとことコメント<span className="form-optional">（任意）</span>
+        </label>
+        <textarea
+          id="entry-comment"
+          className="form-input form-textarea"
+          rows={2}
+          placeholder="例: 土曜の午前は仕事です"
+          value={comment}
+          onChange={(event) => setComment(event.target.value)}
+        />
+      </div>
+
       {error && <p role="alert" className="form-error">{error}</p>}
       <button type="submit" className="btn btn-primary" disabled={submitting}>
-        {submitting ? "保存中..." : "保存"}
+        {submitting ? "送信中..." : "回答を送信する"}
       </button>
     </form>
   );

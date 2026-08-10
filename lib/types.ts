@@ -1,6 +1,6 @@
 // 共有型定義（design.md「型定義（共有）」準拠）
 
-export type SlotId = "19-21" | "21-23" | "8-10" | "10-12";
+export type SlotId = "21-23" | "10-12";
 
 export type Weekday = "月" | "火" | "水" | "木" | "金" | "土" | "日";
 

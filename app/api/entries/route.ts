@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteEntry, upsertEntry } from "@/lib/db";
 import { validateName } from "@/lib/entryRules";
-import { TIME_SLOTS, WEEKDAYS } from "@/lib/timeSlots";
+import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { SlotId, Weekday } from "@/lib/types";
 
 /** DB障害時にユーザーへ表示する再試行案内（design.md Error Handling 準拠） */
@@ -18,14 +18,14 @@ function isSlotId(value: string): value is SlotId {
   return SLOT_ID_SET.has(value);
 }
 
-const WEEKDAY_SET: ReadonlySet<string> = new Set(WEEKDAYS);
-function isWeekday(value: unknown): value is Weekday {
-  return typeof value === "string" && WEEKDAY_SET.has(value);
-}
+/** 時間帯ごとに選べる曜日が違う（例: 10-12 は土日のみ） */
+const ALLOWED_WEEKDAYS_BY_SLOT: ReadonlyMap<SlotId, ReadonlySet<string>> =
+  new Map(TIME_SLOTS.map((slot) => [slot.id, new Set<string>(slot.weekdays)]));
 
 /**
- * preferences が「全 SlotId をちょうど1回キーに持ち、値が有効な Weekday の配列」であることを検証する。
- * 未知の slot_id・未知の曜日・欠落した slot_id はすべて invalid 扱い（要件 2.4 の前提整合性）。
+ * preferences が「全 SlotId をちょうど1回キーに持ち、値がその時間帯で選べる Weekday の配列」
+ * であることを検証する。未知の slot_id・その時間帯で選べない曜日・欠落した slot_id は
+ * すべて invalid 扱い（要件 2.4 の前提整合性）。
  */
 function validatePreferences(
   raw: unknown,
@@ -45,7 +45,14 @@ function validatePreferences(
   const preferences = {} as Record<SlotId, Weekday[]>;
   for (const { id } of TIME_SLOTS) {
     const value = record[id];
-    if (!Array.isArray(value) || !value.every(isWeekday)) {
+    const allowed = ALLOWED_WEEKDAYS_BY_SLOT.get(id);
+    if (
+      !Array.isArray(value) ||
+      !value.every(
+        (weekday): weekday is Weekday =>
+          typeof weekday === "string" && allowed?.has(weekday) === true,
+      )
+    ) {
       return { ok: false };
     }
     preferences[id] = value;

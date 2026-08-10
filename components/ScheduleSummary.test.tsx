@@ -14,9 +14,7 @@ function makeEntry(
     name,
     comment,
     preferences: {
-      "19-21": [],
       "21-23": [],
-      "8-10": [],
       "10-12": [],
       ...preferences,
     },
@@ -49,23 +47,40 @@ describe("ScheduleSummary: 集まれそうな枠の表示", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("見出しと候補チップ（曜日・時間帯・人数）を表示する", () => {
+  it("見出しと候補カード（曜日・時間帯・人数）を表示する", () => {
     const entries = [
-      makeEntry("A", { "19-21": ["木"] }),
-      makeEntry("B", { "19-21": ["木"] }),
+      makeEntry("A", { "21-23": ["木"] }),
+      makeEntry("B", { "21-23": ["木"] }),
     ];
     render(<ScheduleSummary entries={entries} />);
 
     expect(screen.getByText("今週集まれそうな時間・曜日")).toBeDefined();
     expect(screen.getByText("木")).toBeDefined();
-    expect(screen.getByText("19:00-21:00")).toBeDefined();
-    expect(screen.getByText("2/2人")).toBeDefined();
+    expect(screen.getByText("21:00-23:00")).toBeDefined();
+    expect(screen.getByText("2")).toBeDefined();
+    expect(screen.getByText("／ 2人が希望")).toBeDefined();
+  });
+
+  it("候補カードにその枠を希望した人の名前を並べる", () => {
+    const entries = [
+      makeEntry("A", { "21-23": ["木"] }),
+      makeEntry("B", { "21-23": ["木"] }),
+      makeEntry("C", { "10-12": ["土"] }),
+    ];
+    const { container } = render(<ScheduleSummary entries={entries} />);
+
+    // 木 21-23 のカード（1件目）に A・B が並び、C は並ばない
+    const firstCard = container.querySelectorAll(".summary-chip")[0];
+    const names = [...firstCard.querySelectorAll(".summary-person")].map(
+      (el) => el.textContent,
+    );
+    expect(names).toEqual(["A", "B"]);
   });
 
   it("見出しの右隣に「今週分」ラベルと今週の日付範囲を表示する", () => {
     const entries = [
-      makeEntry("A", { "19-21": ["木"] }),
-      makeEntry("B", { "19-21": ["木"] }),
+      makeEntry("A", { "21-23": ["木"] }),
+      makeEntry("B", { "21-23": ["木"] }),
     ];
     render(<ScheduleSummary entries={entries} />);
 
@@ -74,39 +89,14 @@ describe("ScheduleSummary: 集まれそうな枠の表示", () => {
     expect(screen.getByText("12/7（月）〜12/13（日）")).toBeDefined();
   });
 
-  it("コメントを書いた人がいれば、名前とコメントを二段レイアウトで表示する", () => {
-    const entries = [
-      makeEntry("A", { "19-21": ["木"] }, "今週は忙しめ"),
-      makeEntry("B", { "19-21": ["木"] }),
-      makeEntry("C", { "19-21": ["木"] }, "状況次第でおじゃまします！"),
-    ];
-    render(<ScheduleSummary entries={entries} />);
-
-    expect(screen.getByText("A")).toBeDefined();
-    expect(screen.getByText("今週は忙しめ")).toBeDefined();
-    expect(screen.getByText("C")).toBeDefined();
-    expect(screen.getByText("状況次第でおじゃまします！")).toBeDefined();
-    // コメント無しの B は名前として出ないこと（チップの曜日「木」とは別枠）
-    expect(screen.queryByText("B")).toBeNull();
-  });
-
-  it("誰もコメントを書いていなければコメント欄自体を出さない", () => {
-    const entries = [
-      makeEntry("A", { "19-21": ["木"] }),
-      makeEntry("B", { "19-21": ["木"] }),
-    ];
-    const { container } = render(<ScheduleSummary entries={entries} />);
-    expect(container.querySelector(".summary-comments")).toBeNull();
-  });
-
   it("全員一致の候補には「全員OK」バッジを表示する", () => {
     const entries = [
-      makeEntry("A", { "8-10": ["月"], "21-23": ["土"] }),
-      makeEntry("B", { "8-10": ["月"] }),
+      makeEntry("A", { "10-12": ["土"], "21-23": ["火"] }),
+      makeEntry("B", { "10-12": ["土"] }),
     ];
     render(<ScheduleSummary entries={entries} />);
 
-    // 月 8-10 は 2/2（全員一致）、土 21-23 は 1/2
+    // 土 10-12 は 2/2（全員一致）、火 21-23 は 1/2
     expect(screen.getAllByText("全員OK")).toHaveLength(1);
   });
 });

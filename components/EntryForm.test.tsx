@@ -50,7 +50,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
   return {
     name: "とりうみ",
     comment: "",
-    preferences: { "19-21": [], "21-23": [], "8-10": [], "10-12": [] },
+    preferences: { "21-23": [], "10-12": [] },
     lastEditedAt: "2026-07-21T15:00:00",
     ...overrides,
   };
@@ -75,15 +75,15 @@ describe("EntryForm: 通常保存（2.1, 3.1）", () => {
     fireEvent.change(screen.getByLabelText("名前"), {
       target: { value: "とりうみ" },
     });
-    fireEvent.change(screen.getByLabelText("コメント"), {
+    fireEvent.change(screen.getByLabelText("ひとことコメント（任意）"), {
       target: { value: "今週は忙しめ" },
     });
-    const slotGroup = screen.getByRole("group", { name: "19:00-21:00" });
+    const slotGroup = screen.getByRole("group", { name: "21:00-23:00" });
     fireEvent.click(within(slotGroup).getByRole("checkbox", { name: "火" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
-    await screen.findByRole("button", { name: "保存" });
+    await screen.findByRole("button", { name: "回答を送信する" });
 
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/entries", {
       method: "POST",
@@ -92,9 +92,7 @@ describe("EntryForm: 通常保存（2.1, 3.1）", () => {
         name: "とりうみ",
         comment: "今週は忙しめ",
         preferences: {
-          "19-21": ["火"],
-          "21-23": [],
-          "8-10": [],
+          "21-23": ["火"],
           "10-12": [],
         },
       }),
@@ -111,9 +109,9 @@ describe("EntryForm: 通常保存（2.1, 3.1）", () => {
     fireEvent.change(screen.getByLabelText("名前"), {
       target: { value: "とりうみ" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
-    await screen.findByRole("button", { name: "保存" });
+    await screen.findByRole("button", { name: "回答を送信する" });
 
     expect(saveMyName).toHaveBeenCalledExactlyOnceWith("とりうみ");
     expect(refreshMock).toHaveBeenCalledOnce();
@@ -123,17 +121,18 @@ describe("EntryForm: 通常保存（2.1, 3.1）", () => {
     const entry = makeEntry({
       name: "ほたる",
       comment: "既存コメント",
-      preferences: { "19-21": ["月"], "21-23": [], "8-10": [], "10-12": [] },
+      preferences: { "21-23": ["月"], "10-12": [] },
     });
     render(<EntryForm initialEntry={entry} />);
 
     expect((screen.getByLabelText("名前") as HTMLInputElement).value).toBe(
       "ほたる",
     );
-    expect((screen.getByLabelText("コメント") as HTMLInputElement).value).toBe(
-      "既存コメント",
-    );
-    const slotGroup = screen.getByRole("group", { name: "19:00-21:00" });
+    expect(
+      (screen.getByLabelText("ひとことコメント（任意）") as HTMLTextAreaElement)
+        .value,
+    ).toBe("既存コメント");
+    const slotGroup = screen.getByRole("group", { name: "21:00-23:00" });
     expect(
       (within(slotGroup).getByRole("checkbox", { name: "月" }) as HTMLInputElement)
         .checked,
@@ -151,7 +150,7 @@ describe("EntryForm: 400 応答のインラインエラー（2.5）", () => {
     );
 
     render(<EntryForm />);
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("名前を入力してください");
@@ -166,7 +165,7 @@ describe("EntryForm: 400 応答のインラインエラー（2.5）", () => {
     );
 
     render(<EntryForm />);
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
     await screen.findByRole("alert");
 
@@ -183,7 +182,7 @@ describe("EntryForm: ネットワーク/サーバーエラー", () => {
     );
 
     render(<EntryForm />);
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(
@@ -195,7 +194,7 @@ describe("EntryForm: ネットワーク/サーバーエラー", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
 
     render(<EntryForm />);
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(
@@ -214,7 +213,7 @@ describe("EntryForm: 二重送信の防止", () => {
       target: { value: "とりうみ" },
     });
 
-    const submitButton = screen.getByRole("button", { name: "保存" });
+    const submitButton = screen.getByRole("button", { name: "回答を送信する" });
     fireEvent.click(submitButton);
 
     expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(
@@ -225,6 +224,6 @@ describe("EntryForm: 二重送信の防止", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
 
     resolve(makeJsonResponse(200, { ok: true }));
-    await screen.findByRole("button", { name: "保存" });
+    await screen.findByRole("button", { name: "回答を送信する" });
   });
 });
