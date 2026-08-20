@@ -58,6 +58,26 @@ export function getCurrentWeekRangeJst(now: Date = new Date()): WeekRange {
   return { monday, sunday };
 }
 
+/**
+ * 「今週」を表す文字列キー。その週の月曜日を YYYY-MM-DD にしたもの（例 "2026-12-07"）。
+ *
+ * 保存した希望が今週のものかどうかは、このキーの一致だけで判定する（＝週次リセットの正体）。
+ * getCurrentWeekRangeJst().monday と常に一致する — 週境界の定義はこの1箇所しかない。
+ * 週番号ではなく日付にしているのは、DynamoDB の item を目で見たときにすぐ意味が分かるため。
+ */
+export function getCurrentWeekKeyJst(now: Date = new Date()): string {
+  return toIsoDateUtc(getCurrentWeekRangeJst(now).monday);
+}
+
+// monday は「JST の年月日を UTC 上で表現した Date」なので UTC アクセサで読む
+// （formatWeekRangeJp と同じ理由。ローカル時刻アクセサはサーバの TZ に引きずられる）
+function toIsoDateUtc(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const WEEKDAY_JP = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
 // getCurrentWeekRangeJst の返す Date は UTC 上の年月日で「JST の月曜/日曜」を表しているため

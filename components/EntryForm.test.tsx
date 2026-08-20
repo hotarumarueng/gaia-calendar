@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import EntryForm from "@/components/EntryForm";
 import type { MemberEntry } from "@/lib/types";
 
@@ -11,10 +12,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/identity", () => ({
   saveMyName: vi.fn(),
+  getMyName: vi.fn(() => null),
 }));
 
 // vi.mock はホイストされるため、モック後に import して spy として参照する
-import { saveMyName } from "@/lib/identity";
+import { getMyName, saveMyName } from "@/lib/identity";
 
 /** { ok: boolean, ... } を返す Response 相当の最小モックを作る */
 function makeJsonResponse(
@@ -52,6 +54,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
     comment: "",
     preferences: { "21-23": [], "10-12": [] },
     lastEditedAt: "2026-07-21T15:00:00",
+    answeredThisWeek: true,
     ...overrides,
   };
 }
@@ -200,6 +203,57 @@ describe("EntryForm: ネットワーク/サーバーエラー", () => {
     expect(alert.textContent).toBe(
       "保存に失敗しました。時間をおいて再試行してください",
     );
+  });
+});
+
+describe("EntryForm: 名前の自動入力（週次リセット後に曜日だけ入れ直せるように）", () => {
+  it("ブラウザに名前が記憶されていれば名前欄に入っている", async () => {
+    vi.mocked(getMyName).mockReturnValue("ほたる");
+
+    render(<EntryForm />);
+
+    const input = await screen.findByLabelText<HTMLInputElement>("名前");
+    expect(input.value).toBe("ほたる");
+  });
+
+  it("記憶された名前がなければ空のまま", () => {
+    vi.mocked(getMyName).mockReturnValue(null);
+
+    render(<EntryForm />);
+
+    expect(screen.getByLabelText<HTMLInputElement>("名前").value).toBe("");
+  });
+
+  it("編集モードでは記憶された名前より編集対象の名前が優先される", () => {
+    vi.mocked(getMyName).mockReturnValue("ほたる");
+
+    render(<EntryForm initialEntry={makeEntry({ name: "とりうみ" })} />);
+
+    expect(screen.getByLabelText<HTMLInputElement>("名前").value).toBe("とりうみ");
+  });
+
+  it("自動入力された名前を書き換えて送信すると、書き換え後の名前が送られる", async () => {
+    vi.mocked(getMyName).mockReturnValue("ほたる");
+    const fetchMock = vi.fn().mockResolvedValue(makeJsonResponse(200, { ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<EntryForm />);
+    const input = await screen.findByLabelText<HTMLInputElement>("名前");
+    fireEvent.change(input, { target: { value: "とりうみ" } });
+    fireEvent.click(screen.getByRole("button", { name: "回答を送信する" }));
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.name).toBe("とりうみ");
+  });
+
+  it("サーバー描画の時点では名前欄は空（hydration mismatch の再発防止）", () => {
+    // localStorage はサーバーに無い。初回描画で読んでしまうと 2c01453 と同じ不整合が起きる
+    vi.mocked(getMyName).mockReturnValue("ほたる");
+
+    const html = renderToString(<EntryForm />);
+
+    expect(html).not.toContain("ほたる");
   });
 });
 

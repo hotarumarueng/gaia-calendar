@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { saveMyName } from "@/lib/identity";
+import { useEffect, useState, type FormEvent } from "react";
+import { getMyName, saveMyName } from "@/lib/identity";
 import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { MemberEntry, SlotId, Weekday } from "@/lib/types";
 
@@ -57,6 +57,17 @@ export default function EntryForm({ initialEntry }: EntryFormProps) {
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 毎週スケジュールがリセットされても、名前は入れ直さなくていいようにする。
+  // localStorage はサーバーで読めないので、初回描画では必ず空のままにして
+  // hydration 後に埋める（useState の初期値で読むと表示が食い違う）
+  useEffect(() => {
+    if (initialEntry !== undefined) return; // 編集モードは props の名前が正
+    const saved = getMyName();
+    if (saved === null || saved === "") return;
+    // 埋める前にユーザーが打ち始めていたら、その入力を優先する
+    setName((prev) => (prev === "" ? saved : prev));
+  }, [initialEntry]);
 
   function toggleWeekday(slotId: SlotId, weekday: Weekday) {
     setPreferences((prev) => {

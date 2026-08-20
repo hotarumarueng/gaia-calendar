@@ -6,14 +6,15 @@
 みんなの希望日時をバラバラのタイミングで入力してもらい、一覧で可視化することで、実際に集まりやすい時間帯を見つけたい。
 
 ## WHAT
-縦軸=名前、横軸=時間帯（固定4枠）のマトリクス表。
+縦軸=名前、横軸=時間帯（固定2枠。`lib/timeSlots.ts` が唯一の正）のマトリクス表。
 各セルには、その人がその時間帯で希望する曜日が入る。
 ログイン不要・名前入力のみ。常設1枚の表を全員で更新し続ける（週ごとのポール形式ではない）。
+ただし表示は今週分のみ。毎週月曜0時（JST）に希望曜日とコメントがリセットされ、名前だけが残る
+（cron ではなく weekKey による論理リセット。詳細は `.kiro/steering/tech.md`）。
 
-## 現状（2026-07-21時点）
-データモデル合意済み（2テーブル: members / preferences。詳細は `.kiro/steering/tech.md`）。
-cc-sdd（skillsモード）導入済み。次は `/kiro-spec-init` から spec 作成 → 実装。
-再開時は `.kiro/steering/` と本ファイルの WHY/WHAT を読んでから続きを進めること。
+## 現状（2026-08-20時点）
+実装済み・Vercel で稼働中。データ層は DynamoDB シングルテーブル（`gaia-calendar`）。
+週次リセット導入済み。再開時は `.kiro/steering/` と本ファイルの WHY/WHAT を読んでから続きを進めること。
 
 # Agentic SDLC and Spec-Driven Development
 

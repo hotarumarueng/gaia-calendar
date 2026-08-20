@@ -406,6 +406,24 @@ a:hover {
   line-height: 1.8;
 }
 
+/* 今週まだ入力していない人。行の塗りは人の色なので、破線とバッジだけで区別する
+   （色は「人」を意味するために取ってあるので、状態を色で表さない） */
+.roster-row[data-pending] {
+  border-style: dashed;
+}
+
+.roster-pending {
+  flex: none;
+  padding: 0.05rem 0.5rem;
+  border-radius: var(--radius-pill);
+  border: var(--bw-thin) dashed var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-sub);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
 /* ──────────────────────────────────────────────
    今週集まれそうな時間・曜日（右カラム・画面の主役）
    ────────────────────────────────────────────── */
@@ -452,6 +470,27 @@ a:hover {
   letter-spacing: 0.04em;
   color: var(--ink);
   background: var(--accent);
+}
+
+/* 今週の回答状況。「全員OK」バッジと違って状態を伝えるだけなので --accent は使わない */
+.summary-answered {
+  padding: 0.12rem 0.6rem;
+  border-radius: var(--radius-pill);
+  border: var(--bw-thin) solid var(--ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-sub);
+  background: var(--surface);
+}
+
+/* 週が変わって全員リセットされた直後。見出しと週ラベルは残したまま本文だけ差し替える */
+.summary-empty {
+  padding: 1.25rem 1rem;
+  text-align: center;
+  color: var(--ink-sub);
+  font-size: 0.85rem;
+  line-height: 1.8;
 }
 
 /* 候補カード */

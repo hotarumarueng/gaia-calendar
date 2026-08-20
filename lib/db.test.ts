@@ -96,3 +96,99 @@ describe("db.ts（実 DynamoDB テーブルに対する統合テスト）", () =
     expect(matrix.find((e) => e.name === TEST_NAME)).toBeUndefined();
   });
 });
+
+// 週判定の分岐そのものは entryRules.test.ts が網羅している。
+// ここでは「書き込んだ weekKey が実テーブルを往復して効くか」だけを確かめる
+describe("db.ts（週次リセットが実テーブル越しに効くか）", () => {
+  const WEEKLY_TEST_NAME = `__test_db_weekly__${Date.now()}`;
+
+  // JST 2026-12-09（水） … 週は 12/7 始まり
+  const thisWeek = new Date(Date.UTC(2026, 11, 9, 3, 0));
+  // その1週間前 … 週は 11/30 始まり
+  const lastWeek = new Date(Date.UTC(2026, 11, 2, 3, 0));
+
+  beforeAll(async () => {
+    await deleteEntry(WEEKLY_TEST_NAME);
+  });
+
+  afterAll(async () => {
+    await deleteEntry(WEEKLY_TEST_NAME);
+  });
+
+  it("先週保存した希望は、今週から見ると名前だけ残って曜日とコメントが消える", async () => {
+    await upsertEntry(
+      {
+        name: WEEKLY_TEST_NAME,
+        comment: "先週のコメント",
+        preferences: buildPreferences({ "21-23": ["月", "水"], "10-12": ["土"] }),
+      },
+      lastWeek,
+    );
+
+    const entry = (await getMatrix(thisWeek)).find(
+      (e) => e.name === WEEKLY_TEST_NAME,
+    );
+
+    expect(entry).toBeDefined();
+    expect(entry?.comment).toBe("");
+    expect(entry?.preferences).toEqual(buildPreferences());
+    expect(entry?.lastEditedAt).toBe("");
+    expect(entry?.answeredThisWeek).toBe(false);
+  });
+
+  it("同じデータでも、その週から見れば曜日もコメントも出る", async () => {
+    const entry = (await getMatrix(lastWeek)).find(
+      (e) => e.name === WEEKLY_TEST_NAME,
+    );
+
+    expect(entry?.comment).toBe("先週のコメント");
+    expect(entry?.preferences).toEqual(
+      buildPreferences({ "21-23": ["月", "水"], "10-12": ["土"] }),
+    );
+    expect(entry?.answeredThisWeek).toBe(true);
+  });
+
+  it("今週入れ直すと復活し、行は増えず、前週だけにあった枠は空のままになる", async () => {
+    await upsertEntry(
+      {
+        name: WEEKLY_TEST_NAME,
+        comment: "今週のコメント",
+        preferences: buildPreferences({ "21-23": ["火"] }),
+      },
+      thisWeek,
+    );
+
+    const matching = (await getMatrix(thisWeek)).filter(
+      (e) => e.name === WEEKLY_TEST_NAME,
+    );
+
+    expect(matching).toHaveLength(1);
+    expect(matching[0].comment).toBe("今週のコメント");
+    // 10-12 は先週入れたきり今週は空 → planSlotWrites の DELETE で物理的にも消えている
+    expect(matching[0].preferences).toEqual(
+      buildPreferences({ "21-23": ["火"] }),
+    );
+    expect(matching[0].answeredThisWeek).toBe(true);
+  });
+
+  it("deleteEntry は古い週の item も含めて消す", async () => {
+    await upsertEntry(
+      {
+        name: WEEKLY_TEST_NAME,
+        comment: "先週のぶん",
+        preferences: buildPreferences({ "10-12": ["日"] }),
+      },
+      lastWeek,
+    );
+
+    await deleteEntry(WEEKLY_TEST_NAME);
+
+    // どの週から見ても残っていないこと
+    expect(
+      (await getMatrix(thisWeek)).find((e) => e.name === WEEKLY_TEST_NAME),
+    ).toBeUndefined();
+    expect(
+      (await getMatrix(lastWeek)).find((e) => e.name === WEEKLY_TEST_NAME),
+    ).toBeUndefined();
+  });
+});

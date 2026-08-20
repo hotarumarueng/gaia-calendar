@@ -2,7 +2,7 @@
 // 上位候補を「曜日 × 時間帯」のカードで並べ、それぞれ誰が希望しているかまで見せる。
 
 import { buildPersonColors } from "@/lib/personColor";
-import { computeTopCandidates } from "@/lib/summary";
+import { computeTopCandidates, countAnswered } from "@/lib/summary";
 import { TIME_SLOTS } from "@/lib/timeSlots";
 import type { MemberEntry, SlotId } from "@/lib/types";
 import { formatWeekRangeJp, getCurrentWeekRangeJst } from "@/lib/weekRange";
@@ -16,15 +16,19 @@ function slotLabel(slotId: SlotId): string {
 }
 
 export default function ScheduleSummary({ entries }: ScheduleSummaryProps) {
+  // 名簿が空のとき＝まだ誰もこのアプリを使っていないときだけ、ゾーンごと出さない。
+  // 候補ゼロで消してしまうと、週次リセット直後（毎週月曜）に画面の主役と
+  // 「今週分 M/D〜M/D」ラベルが揃って消えてしまう
+  if (entries.length === 0) return null;
+
   // 上位3件だけを横並びで見せる。全候補の一覧は下の AvailabilityGrid が持つので、
   // ここは「本命はどこか」に絞る
   const candidates = computeTopCandidates(entries, 3);
-  if (candidates.length === 0) return null;
-
   const weekLabel = formatWeekRangeJp(getCurrentWeekRangeJst());
+  const { answered, total } = countAnswered(entries);
 
   // 全候補が同数のときは差がないので「最多」は出さない（バッジがただのノイズになる）
-  const topCount = candidates[0].count;
+  const topCount = candidates[0]?.count ?? 0;
   const hasTopStandout = candidates.some(
     (candidate) => candidate.count < topCount,
   );
@@ -38,8 +42,17 @@ export default function ScheduleSummary({ entries }: ScheduleSummaryProps) {
         <span className="summary-week-label">
           <span className="summary-week-tag">今週分</span>
           <span className="summary-week-range">{weekLabel}</span>
+          <span className="summary-answered">
+            回答 {answered}／{total}人
+          </span>
         </span>
       </div>
+
+      {candidates.length === 0 && (
+        <p className="summary-empty">
+          今週の回答はまだありません。空いてる曜日を選んで送信してね
+        </p>
+      )}
 
       <div className="summary-chips">
         {candidates.map((candidate) => {

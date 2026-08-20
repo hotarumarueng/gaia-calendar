@@ -1,5 +1,8 @@
 // DynamoDB アクセス層（design.md「db.ts」準拠。DynamoDB への読み書きはこのファイル経由のみ）
 // 要件 2.2（同名同時間帯は上書き）, 2.3（永続化）, 5.1（人単位の全データ削除）
+//
+// このファイルは「Scan して渡す・Put/Delete する」だけの薄い層に保つ。
+// 何を今週分とみなすか・何を書くかの判断はすべて entryRules.ts の純関数側にある。
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -11,39 +14,12 @@ import {
   type QueryCommandOutput,
   type ScanCommandOutput,
 } from "@aws-sdk/lib-dynamodb";
-import { latestEditedAt, planSlotWrites } from "./entryRules";
-import { TIME_SLOTS } from "./timeSlots";
-import type { MemberEntry, SlotId, Weekday } from "./types";
+import { buildMemberEntries, buildWriteItems, type StoredItem } from "./entryRules";
+import type { MemberEntry } from "./types";
+import { getCurrentWeekKeyJst } from "./weekRange";
 
-/** Member item の SK 固定値（tech.md / infra/dynamodb-setup.md 準拠） */
-const MEMBER_SK = "MEMBER";
-const SLOT_SK_PREFIX = "SLOT#";
-
-function slotSk(slotId: SlotId): string {
-  return `${SLOT_SK_PREFIX}${slotId}`;
-}
-
-const SLOT_ID_SET: ReadonlySet<string> = new Set(
-  TIME_SLOTS.map((slot) => slot.id),
-);
-function isSlotId(value: string): value is SlotId {
-  return SLOT_ID_SET.has(value);
-}
-
-/**
- * 時間帯ごとに選べる曜日が違う（例: 10-12 は土日のみ）。
- * 廃止した時間帯の item や、範囲外の曜日を含む古い item は読み捨てる
- * ＝ 移行スクリプトなしで表示を新しい定義に揃える
- */
-const ALLOWED_WEEKDAYS_BY_SLOT: ReadonlyMap<SlotId, ReadonlySet<string>> =
-  new Map(TIME_SLOTS.map((slot) => [slot.id, new Set<string>(slot.weekdays)]));
-
-/** upsertEntry に渡す検証済みデータ（MemberEntry から表示用の lastEditedAt を除いたもの） */
-export type ValidatedEntry = {
-  name: string;
-  comment: string;
-  preferences: Record<SlotId, Weekday[]>;
-};
+export type { ValidatedEntry } from "./entryRules";
+import type { ValidatedEntry } from "./entryRules";
 
 type EnvVarName =
   | "AWS_REGION"
@@ -81,38 +57,33 @@ function getTableName(): string {
   return requireEnv("DYNAMO_TABLE_NAME");
 }
 
-/** Scan/Query から返る item のうち、このアプリが書き込む形の item だけを扱うためのガード */
-interface RawItem {
-  name: string;
-  sk: string;
-  comment?: string;
-  weekdays?: string[];
-  updatedAt: string;
-}
-
-function isRawItem(value: unknown): value is RawItem {
+/**
+ * Scan/Query から返る item のうち、このアプリが書き込む形の item だけを扱うためのガード。
+ *
+ * weekKey は必須にしない。週次リセット導入前に書かれた item を弾いてしまうと、
+ * 残すべき名前まで名簿から消えるため（週判定は buildMemberEntries 側が行う）。
+ */
+function isStoredItem(value: unknown): value is StoredItem {
   if (typeof value !== "object" || value === null) {
     return false;
   }
   const record = value as Record<string, unknown>;
-  return typeof record.name === "string" && typeof record.sk === "string" && typeof record.updatedAt === "string";
+  return (
+    typeof record.name === "string" &&
+    typeof record.sk === "string" &&
+    typeof record.updatedAt === "string"
+  );
 }
 
-/** preferences の初期値。全 SlotId を空配列で補完する（未入力時間帯の一義化） */
-function buildEmptyPreferences(): Record<SlotId, Weekday[]> {
-  const preferences = {} as Record<SlotId, Weekday[]>;
-  for (const { id } of TIME_SLOTS) {
-    preferences[id] = [];
-  }
-  return preferences;
-}
-
-/** 表データ取得。Scan して人単位に組み立てる（未入力時間帯は空配列で補完） */
-export async function getMatrix(): Promise<MemberEntry[]> {
+/** 表データ取得。Scan して entryRules に組み立てさせる（今週分の判定もそちら側） */
+export async function getMatrix(now: Date = new Date()): Promise<MemberEntry[]> {
   const client = getDocumentClient();
   const tableName = getTableName();
 
-  const items: RawItem[] = [];
+  // ページングの途中で月曜0時をまたいでも判定がぶれないよう、基準は最初に1回だけ決める
+  const currentWeekKey = getCurrentWeekKeyJst(now);
+
+  const items: StoredItem[] = [];
   let exclusiveStartKey: ScanCommandOutput["LastEvaluatedKey"];
   do {
     const result = await client.send(
@@ -122,99 +93,38 @@ export async function getMatrix(): Promise<MemberEntry[]> {
       }),
     );
     for (const item of result.Items ?? []) {
-      if (isRawItem(item)) {
+      if (isStoredItem(item)) {
         items.push(item);
       }
     }
     exclusiveStartKey = result.LastEvaluatedKey;
   } while (exclusiveStartKey !== undefined);
 
-  const itemsByName = new Map<string, RawItem[]>();
-  for (const item of items) {
-    const group = itemsByName.get(item.name) ?? [];
-    group.push(item);
-    itemsByName.set(item.name, group);
-  }
-
-  const entries: MemberEntry[] = [];
-  for (const [name, group] of itemsByName) {
-    const preferences = buildEmptyPreferences();
-    let comment = "";
-    const timestamps: string[] = [];
-
-    for (const item of group) {
-      timestamps.push(item.updatedAt);
-      if (item.sk === MEMBER_SK) {
-        comment = item.comment ?? "";
-      } else if (item.sk.startsWith(SLOT_SK_PREFIX)) {
-        const slotId = item.sk.slice(SLOT_SK_PREFIX.length);
-        if (isSlotId(slotId)) {
-          const allowed = ALLOWED_WEEKDAYS_BY_SLOT.get(slotId);
-          preferences[slotId] = (item.weekdays ?? []).filter(
-            (weekday): weekday is Weekday => allowed?.has(weekday) === true,
-          );
-        }
-      }
-    }
-
-    entries.push({
-      name,
-      comment,
-      preferences,
-      lastEditedAt: latestEditedAt(timestamps) ?? "",
-    });
-  }
-
-  return entries;
+  return buildMemberEntries(items, currentWeekKey);
 }
 
 /**
- * 人単位保存。Member item を PutItem し、時間帯ごとに entryRules.planSlotWrites の
- * 判定に従って PutItem または DeleteItem する。全書き込みで updatedAt を必ず設定する
- * （DynamoDB 側に default がないため）
+ * 人単位保存。書く内容は entryRules.buildWriteItems が決める
+ * （weekKey・expiresAt・updatedAt はすべて同じ now から導出される）
  */
-export async function upsertEntry(entry: ValidatedEntry): Promise<void> {
+export async function upsertEntry(
+  entry: ValidatedEntry,
+  now: Date = new Date(),
+): Promise<void> {
   const client = getDocumentClient();
   const tableName = getTableName();
-  const updatedAt = new Date().toISOString();
+  const { memberItem, slotItems, slotDeleteKeys } = buildWriteItems(entry, now);
 
-  await client.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: {
-        name: entry.name,
-        sk: MEMBER_SK,
-        comment: entry.comment,
-        updatedAt,
-      },
-    }),
-  );
-
-  const { upserts, deletes } = planSlotWrites(entry.preferences);
+  await client.send(new PutCommand({ TableName: tableName, Item: memberItem }));
 
   // design.md の保存フロー通り、時間帯ごとの書き込みは逐次実行する
   // （途中失敗しても部分更新として許容し、再保存で収束させる設計のため）
-  for (const { slotId, weekdays } of upserts) {
-    await client.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          name: entry.name,
-          sk: slotSk(slotId),
-          weekdays,
-          updatedAt,
-        },
-      }),
-    );
+  for (const item of slotItems) {
+    await client.send(new PutCommand({ TableName: tableName, Item: item }));
   }
 
-  for (const slotId of deletes) {
-    await client.send(
-      new DeleteCommand({
-        TableName: tableName,
-        Key: { name: entry.name, sk: slotSk(slotId) },
-      }),
-    );
+  for (const key of slotDeleteKeys) {
+    await client.send(new DeleteCommand({ TableName: tableName, Key: key }));
   }
 }
 
@@ -223,7 +133,7 @@ export async function deleteEntry(name: string): Promise<void> {
   const client = getDocumentClient();
   const tableName = getTableName();
 
-  const items: RawItem[] = [];
+  const items: StoredItem[] = [];
   let exclusiveStartKey: QueryCommandOutput["LastEvaluatedKey"];
   do {
     const result = await client.send(
@@ -236,13 +146,14 @@ export async function deleteEntry(name: string): Promise<void> {
       }),
     );
     for (const item of result.Items ?? []) {
-      if (isRawItem(item)) {
+      if (isStoredItem(item)) {
         items.push(item);
       }
     }
     exclusiveStartKey = result.LastEvaluatedKey;
   } while (exclusiveStartKey !== undefined);
 
+  // 週に関係なくその人の item を全部消す（古い weekKey のものも含む）
   for (const item of items) {
     await client.send(
       new DeleteCommand({

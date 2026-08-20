@@ -36,6 +36,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
     comment: "テストコメント",
     preferences: { "21-23": ["火", "木"], "10-12": [] },
     lastEditedAt: "2026-07-21T15:00:00",
+    answeredThisWeek: true,
     ...overrides,
   };
 }
@@ -120,7 +121,17 @@ describe("MatrixPageClient: 編集フロー", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "編集をキャンセル" }));
-    expect((screen.getByLabelText("名前") as HTMLInputElement).value).toBe("");
+
+    // 編集対象のコメント・曜日は消えるが、名前は記憶された自分の名前が残る
+    // （週次リセット後に「曜日を入れるだけ」で済ませるための挙動）
+    expect(
+      (screen.getByLabelText("ひとことコメント（任意）") as HTMLTextAreaElement)
+        .value,
+    ).toBe("");
+    expect(screen.queryByRole("button", { name: "編集をキャンセル" })).toBeNull();
+    expect((screen.getByLabelText("名前") as HTMLInputElement).value).toBe(
+      "とりうみ",
+    );
   });
 });
 

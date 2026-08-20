@@ -15,6 +15,7 @@ function makeEntry(
     comment: "",
     preferences: { "21-23": [], "10-12": [], ...preferences },
     lastEditedAt: "2026-07-21T15:00:00",
+    answeredThisWeek: true,
   };
 }
 

@@ -15,6 +15,7 @@ function makeEntry(overrides: Partial<MemberEntry> = {}): MemberEntry {
     preferences: { "21-23": [], "10-12": [] },
     // タイムゾーン指定なし = ローカル時刻として解釈され、表示テストが環境非依存になる
     lastEditedAt: "2026-07-21T15:00:00+09:00",
+    answeredThisWeek: true,
     ...overrides,
   };
 }
@@ -112,5 +113,59 @@ describe("RosterList: 本人行のみ操作表示（3.2, 3.3）", () => {
     fireEvent.click(screen.getByRole("button", { name: "削除" }));
 
     expect(onDelete).toHaveBeenCalledExactlyOnceWith("とりうみ");
+  });
+});
+
+describe("RosterList: 週次リセット後の未入力表示", () => {
+  /** 名簿にはいるが今週まだ入力していない人（曜日・コメント・最終編集日時が空） */
+  function makePendingEntry(name: string): MemberEntry {
+    return makeEntry({
+      name,
+      comment: "",
+      lastEditedAt: "",
+      answeredThisWeek: false,
+    });
+  }
+
+  it("今週まだ入力していない人の行に「未入力」を出す", () => {
+    render(<RosterList entries={[makePendingEntry("とりうみ")]} />);
+
+    expect(within(getRowByName("とりうみ")).getByText("未入力")).toBeDefined();
+  });
+
+  it("入力済みの人の行には「未入力」を出さない", () => {
+    render(<RosterList entries={[makeEntry({ name: "とりうみ" })]} />);
+
+    expect(within(getRowByName("とりうみ")).queryByText("未入力")).toBeNull();
+  });
+
+  it("未入力の行には最終編集日時を表示しない", () => {
+    const { container } = render(
+      <RosterList entries={[makePendingEntry("とりうみ")]} />,
+    );
+
+    expect(container.querySelector(".roster-time")?.textContent).toBe("");
+  });
+
+  it("未入力でも名前は名簿に並び、本人なら編集・削除ボタンが出る", () => {
+    // 週次リセットの狙いは「名前は残す」こと。行ごと消えてはいけない
+    window.localStorage.setItem(STORAGE_KEY, "とりうみ");
+    render(<RosterList entries={[makePendingEntry("とりうみ")]} />);
+
+    const row = getRowByName("とりうみ");
+    expect(within(row).getByText("とりうみ")).toBeDefined();
+    expect(within(row).getByRole("button", { name: "編集" })).toBeDefined();
+    expect(within(row).getByRole("button", { name: "削除" })).toBeDefined();
+  });
+
+  it("入力済みと未入力が混在しても全員分の行が並ぶ", () => {
+    render(
+      <RosterList
+        entries={[makeEntry({ name: "とりうみ" }), makePendingEntry("ほたる")]}
+      />,
+    );
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getAllByText("未入力")).toHaveLength(1);
   });
 });

@@ -66,10 +66,15 @@ export default function RosterList({ entries, onEdit, onDelete }: RosterListProp
             key={entry.name}
             className="roster-row"
             data-mine={isMine ? "" : undefined}
+            data-pending={entry.answeredThisWeek ? undefined : ""}
             style={{ backgroundColor: personColors.get(entry.name) }}
           >
             <div className="roster-main">
               <span className="roster-name">{entry.name}</span>
+              {/* 週が変わると曜日とコメントは消えるので、コメント欄の位置に未入力を出す */}
+              {!entry.answeredThisWeek && (
+                <span className="roster-pending">未入力</span>
+              )}
               {entry.comment && (
                 <span className="roster-comment">{entry.comment}</span>
               )}
