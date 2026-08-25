@@ -55,3 +55,5 @@ flowchart LR
 | DynamoDB テーブルと IAM の構築手順 | [infra/dynamodb-setup.md](infra/dynamodb-setup.md) |
 | 週境界（JST月曜0時）の判定ロジック | [lib/weekRange.ts](lib/weekRange.ts) |
 | 時間帯の定義（唯一の正） | [lib/timeSlots.ts](lib/timeSlots.ts) |
+
+なお表示名は環境変数 `SITE_TITLE` で差し替えられます（未設定なら「Gaia カレンダー」）。
