@@ -7,12 +7,6 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
-    },
-    {
-      "name": "likec4",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["likec4", "start", "docs/architecture"],
-      "port": 5173
     }
   ]
 }

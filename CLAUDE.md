@@ -12,68 +12,18 @@
 ただし表示は今週分のみ。毎週月曜0時（JST）に希望曜日とコメントがリセットされ、名前だけが残る
 （cron ではなく weekKey による論理リセット。詳細は `.kiro/steering/tech.md`）。
 
-## 現状（2026-08-20時点）
-実装済み・Vercel で稼働中。データ層は DynamoDB シングルテーブル（`gaia-calendar`）。
-週次リセット導入済み。再開時は `.kiro/steering/` と本ファイルの WHY/WHAT を読んでから続きを進めること。
+## 現状（2026-08-26時点）
+実装済み・Vercel で稼働中。データ層は DynamoDB シングルテーブル（`gaia-calendar`、プロビジョンド 1RCU/1WCU）。
+週次リセット導入済み。GitHub 公開済み（本番URLは非公開）。
+再開時は `.kiro/steering/` と本ファイルの WHY/WHAT を読んでから続きを進めること。
 
-# Agentic SDLC and Spec-Driven Development
+## ドキュメントの場所
+- `.kiro/steering/` — プロジェクト全体のルールと文脈（product / tech / structure）
+- `.kiro/specs/schedule-matrix/` — 要件・設計・タスクの記録
+- `docs/architecture.md` — アーキテクチャ図（全体構成・データモデル・週次リセット・容量設計）
+- `infra/dynamodb-setup.md` — DynamoDB テーブルと IAM ユーザーの作成手順
 
-Kiro-style Spec-Driven Development on an agentic SDLC
-
-## Project Context
-
-### Paths
-- Steering: `.kiro/steering/`
-- Specs: `.kiro/specs/`
-
-### Steering vs Specification
-
-**Steering** (`.kiro/steering/`) - Guide AI with project-wide rules and context
-**Specs** (`.kiro/specs/`) - Formalize development process for individual features
-
-### Active Specifications
-- Check `.kiro/specs/` for active specifications
-- Use `/kiro-spec-status [feature-name]` to check progress
-
-## Development Guidelines
-- Think in English, generate responses in Japanese. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
-
-## Minimal Workflow
-- Phase 0 (optional): `/kiro-steering`, `/kiro-steering-custom`
-- Discovery: `/kiro-discovery "idea"` — determines action path, writes brief.md + roadmap.md for multi-spec projects
-- Phase 1 (Specification):
-  - Single spec: `/kiro-spec-quick {feature} [--auto]` or step by step:
-    - `/kiro-spec-init "description"`
-    - `/kiro-spec-requirements {feature}`
-    - `/kiro-validate-gap {feature}` (optional: for existing codebase)
-    - `/kiro-spec-design {feature} [-y]`
-    - `/kiro-validate-design {feature}` (optional: design review)
-    - `/kiro-spec-tasks {feature} [-y]`
-  - Multi-spec: `/kiro-spec-batch` — creates all specs from roadmap.md in parallel by dependency wave
-- Phase 2 (Implementation): `/kiro-impl {feature} [tasks]`
-  - Without task numbers: autonomous mode (subagent per task + independent review + final validation)
-  - With task numbers: manual mode (selected tasks in main context, still reviewer-gated before completion)
-  - `/kiro-validate-impl {feature}` (standalone re-validation)
-- Progress check: `/kiro-spec-status {feature}` (use anytime)
-
-## Skills Structure
-Skills are located in `.claude/skills/kiro-*/SKILL.md`
-- Each skill is a directory with a `SKILL.md` file
-- Skills run inline with access to conversation context
-- Skills may delegate parallel research to subagents for efficiency
-- Additional files (templates, examples) can be added to skill directories
-- `kiro-review` — task-local adversarial review protocol used by reviewer subagents
-- `kiro-debug` — root-cause-first debug protocol used by debugger subagents
-- `kiro-verify-completion` — fresh-evidence gate before success or completion claims
-- **If there is even a 1% chance a skill applies to the current task, invoke it.** Do not skip skills because the task seems simple.
-
-## Development Rules
-- 3-phase approval workflow: Requirements → Design → Tasks → Implementation
-- Human review required each phase; use `-y` only for intentional fast-track
-- Keep steering current and verify alignment with `/kiro-spec-status`
-- Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
-
-## Steering Configuration
-- Load entire `.kiro/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`
-- Custom files are supported (managed via `/kiro-steering-custom`)
+## 開発上の注意
+- 時間帯の定義は `lib/timeSlots.ts` が唯一の正。ここを変えればフォーム・API検証・集計・グリッドが追従する
+- 週境界の定義は `lib/weekRange.ts` の `getCurrentWeekKeyJst` ただ1つ。週判定は必ずサーバー側で行う
+- `lib/db.test.ts` は実 DynamoDB テーブルに対する統合テスト。実行には `.env.local` の認証情報が要る
