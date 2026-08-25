@@ -2,7 +2,9 @@
 .claude/handover/
 .DS_Store
 .cc-sdd.backup/
-.env.local
+.env
+.env.*
+!.env.example
 node_modules/
 .next/
 /out/
