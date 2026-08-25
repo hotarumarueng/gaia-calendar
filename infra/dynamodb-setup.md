@@ -1,7 +1,17 @@
 # DynamoDB テーブル・IAM ユーザー作成手順（タスク 1.2）
 
 gaia-calendar 用のテーブルと、アプリ専用の最小権限 IAM ユーザーを作成する手順。
-**必ずプロビジョンドモード（25RCU/25WCU）で作成する**こと（オンデマンドは Always Free 対象外）。
+**必ずプロビジョンドモード（1RCU/1WCU）で作成する**こと（オンデマンドは Always Free 対象外）。
+
+> **25/25 で作らないこと。** DynamoDB の無料枠 25RCU/25WCU は**テーブル単位ではなくアカウント単位**の
+> 共有資源で、同じ AWS アカウント上の全プロジェクトで取り合う。1つのテーブルが 25/25 を確保すると
+> それだけで枠を使い切り、**GSI を1本足すか2つ目のプロビジョンドテーブルを作った瞬間に、
+> 警告なしでフルレート課金が始まる**（GSI は本体とは別に自前の RCU/WCU を持つため）。
+>
+> 1/1 で足りる根拠（2026-08-26 実測・直近14日）: 最も混んだ1時間でも書き込み 78 ユニット・読み取り 31.5 ユニット。
+> 1 WCU は1時間あたり 3,600 ユニットを供給するので使用率は約2%。単一リクエストの最大消費は 1.0 単位
+> （＝全アイテムが 1KB 未満）で、スロットリングの発生実績はゼロ。
+> 瞬間的なアクセス集中は、DynamoDB が最大300秒ぶん貯めるバーストキャパシティが吸収する。
 
 ## 前提
 - AWS CLI がセットアップ済み（`aws sts get-caller-identity` が自分のアカウントを返す）
@@ -18,7 +28,7 @@ aws dynamodb create-table \
   --key-schema \
     AttributeName=name,KeyType=HASH \
     AttributeName=sk,KeyType=RANGE \
-  --provisioned-throughput ReadCapacityUnits=25,WriteCapacityUnits=25 \
+  --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
   --region ap-northeast-1
 ```
 
@@ -32,7 +42,7 @@ aws dynamodb describe-table --table-name gaia-calendar --region ap-northeast-1 \
   --query 'Table.[TableStatus, ProvisionedThroughput.ReadCapacityUnits, ProvisionedThroughput.WriteCapacityUnits]'
 ```
 
-期待値: `["ACTIVE", 25, 25]`（ACTIVE になるまで数十秒かかることがある）
+期待値: `["ACTIVE", 1, 1]`（ACTIVE になるまで数十秒かかることがある）
 
 ## Step 2: アプリ専用 IAM ユーザー作成（最小権限）
 
@@ -116,10 +126,37 @@ aws dynamodb describe-time-to-live --table-name gaia-calendar --region ap-northe
   （`weekdays` や `comment` を定義しないのと同じ理由）
 
 ## 完了条件チェックリスト
-- [ ] describe-table が `ACTIVE` かつ RCU/WCU = 25/25 を返す
+- [ ] describe-table が `ACTIVE` かつ RCU/WCU = 1/1 を返す
 - [ ] `aws iam list-user-policies --user-name gaia-calendar-app` が `gaia-calendar-table-only` を返す
 - [ ] `.env.local` に4つの環境変数が揃っている
 - [ ] `describe-time-to-live` が `ENABLED` / `expiresAt` を返す
+
+## 既存テーブルの容量を変更する
+
+過去に 25/25 で作ってしまった場合や、実測に対して容量が過剰／不足だと分かった場合。
+
+```bash
+aws dynamodb update-table --table-name gaia-calendar \
+  --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+  --region ap-northeast-1
+```
+
+- **引き下げは1日（UTC）あたり4回まで。** 引き上げに回数制限はない
+- 反映中は `TableStatus` が `UPDATING` になる。`ACTIVE` に戻るまで数十秒
+- 判断材料は実測値で取る。過剰かどうかは勘ではなく CloudWatch で決める:
+
+```bash
+aws cloudwatch get-metric-statistics --namespace AWS/DynamoDB \
+  --metric-name ConsumedWriteCapacityUnits \
+  --dimensions Name=TableName,Value=gaia-calendar \
+  --start-time $(date -u -v-14d +%Y-%m-%dT%H:%M:%SZ) \
+  --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  --period 3600 --statistics Sum Maximum --region ap-northeast-1 \
+  --query 'sort_by(Datapoints,&Sum)[-5:]'
+```
+
+`Sum` はその1時間に消費した合計ユニット数、`Maximum` は**単一リクエストが消費した最大ユニット数**。
+1 WCU の供給量は 1時間 = 3,600 ユニット なので、`Sum` をこれと比べる。
 
 ## 削除方法（プロジェクトをやめるとき）
 

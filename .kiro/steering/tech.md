@@ -4,6 +4,8 @@
 - Next.js（App Router、フロント + API Routes）
 - Vercel Hosting（無料枠）
 - Amazon DynamoDB（Always Free: 25GB・25RCU/WCU。プロビジョンドモードで無料枠内運用）
+  - **無料枠 25RCU/25WCU はアカウント単位の共有資源**で、同一 AWS アカウントの全プロジェクトで取り合う。
+    本テーブルは実測に合わせて **1RCU/1WCU** で運用する（根拠は `infra/dynamodb-setup.md`）
 - ログイン機能なし（名前入力のみ、名前をキーに自分の行を上書き更新）
 
 変更理由: 当初は Supabase Postgres だったが、AWS学習（SRE転職ポートフォリオ）目的で置換。
@@ -14,7 +16,7 @@ Lambda は挟まない（Vercel の API Routes 自体がサーバーレス関数
 概念は「人（member）」と「人×時間帯の希望（preference）」の2種類。
 「情報は、その情報の単位と同じ単位の item に置く」原則は Postgres 2テーブル案から変えない。
 
-テーブル `gaia-calendar`（プロビジョンド 25RCU/25WCU = Always Free 内）
+テーブル `gaia-calendar`（プロビジョンド 1RCU/1WCU = Always Free 内）
 - Member item: PK = name, SK = "MEMBER"
   - comment (string) — 一言ステータスコメント
   - updatedAt (string, ISO 8601)
