@@ -5,7 +5,7 @@
 // NEXT_PUBLIC_ を付けないのは、Server Component からしか参照しないため
 // （クライアントバンドルに埋め込ませない）。
 
-const DEFAULT_SITE_TITLE = "Gaia カレンダー";
+const DEFAULT_SITE_TITLE = "カレンダー";
 
 /** サイトの表示名を返す。リクエストごとに評価されるよう関数にしている */
 export function getSiteTitle(): string {
