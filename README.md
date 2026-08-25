@@ -4,8 +4,11 @@
 縦軸=名前、横軸=時間帯のマトリクス表に、各自の希望曜日を書き込んでいくだけで、集まりやすい時間帯が見えてきます。
 
 > [!NOTE]
-> 本番URLは非公開です。実際の友人グループが運用中のツールで、ログイン不要（誰でも書き込める）設計のため、
-> 誰でもアクセスできるURLを公開すると実データが荒らされてしまいます。
+> このリポジトリは設計と実装を公開するためのもので、そのままクローンしても動きません。
+> 起動には自分のAWSアカウント上の DynamoDB テーブルと IAM ユーザーが必要です（手順は [infra/dynamodb-setup.md](infra/dynamodb-setup.md)）。
+>
+> 本番URLも非公開です。実際の友人グループが運用中のツールで、ログイン不要（誰でも書き込める）設計のため、
+> URLを公開すると実データが荒らされてしまいます。
 
 ## 主な機能
 
@@ -43,17 +46,12 @@ flowchart LR
 | ホスティング | Vercel（無料枠） |
 | テスト | Vitest / Testing Library |
 
-## セットアップ
+## リポジトリの歩き方
 
-```bash
-npm install
-npm run dev
-```
-
-DynamoDB テーブルとIAMユーザーの作成手順は [infra/dynamodb-setup.md](infra/dynamodb-setup.md) にまとめています。
-
-## テスト
-
-```bash
-npm test
-```
+| 見たいもの | 場所 |
+|---|---|
+| アーキテクチャ図・データモデル・週次リセットの仕組み | [docs/architecture.md](docs/architecture.md) |
+| 要件・設計・タスクの記録（仕様駆動開発の過程） | [.kiro/specs/schedule-matrix/](.kiro/specs/schedule-matrix/) |
+| DynamoDB テーブルと IAM の構築手順 | [infra/dynamodb-setup.md](infra/dynamodb-setup.md) |
+| 週境界（JST月曜0時）の判定ロジック | [lib/weekRange.ts](lib/weekRange.ts) |
+| 時間帯の定義（唯一の正） | [lib/timeSlots.ts](lib/timeSlots.ts) |
