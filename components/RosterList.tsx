@@ -43,6 +43,7 @@ function formatLastEditedAt(iso: string): string {
 export default function RosterList({ entries, onEdit, onDelete }: RosterListProps) {
   const [myName, setMyName] = useState<string | null>(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage は hydration 後にしか読めない
     setMyName(getMyName());
   }, []);
 

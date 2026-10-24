@@ -66,6 +66,7 @@ export default function EntryForm({ initialEntry }: EntryFormProps) {
     const saved = getMyName();
     if (saved === null || saved === "") return;
     // 埋める前にユーザーが打ち始めていたら、その入力を優先する
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration 後にだけ読める値なので effect で埋める
     setName((prev) => (prev === "" ? saved : prev));
   }, [initialEntry]);
 
